@@ -1,9 +1,15 @@
-# Make a map of the ROMS and Atlantis domains
+# Use this script to view the ROMS grid and identify where to subset it based on coordinates
+# The NEP 10K grid is over a very large area, for CVA we ony need GOA
+# This will be a crude subsetting just to trim off most of the excess
+# later on we'll filter by depth too
+# NOTE: the goal is to subset based on the rho grid (xi and eta coordinates)
+# The ROMS output files do not have lat-lon, the variables are on the rho grid
+# the grid.nc file is the key to use between lat-lon and xi-eta
+# if you rerun this script and identify new coordinates, you'll need to rerun the bash extraction script server-side and repeat the whole process
 
 library(sf)
 library(here)
 library(tidyverse)
-library(rbgm)
 library(tidync)
 library(rnaturalearth)
 
@@ -26,7 +32,7 @@ roms_rho <- roms %>% activate(latlon_rhogrd) %>% hyper_tibble() %>%
 rho_bbox <- roms_rho %>%
   st_bbox() 
 
-# limits: 48-62; 185-232
+# limits: these you'll have to eyeball yourself if you want to change them
 min_lon <- 190 # until end of 610 and then 2.5 degree buffer
 max_lon <- 230 # catch the easternmost edge of Atlantis 
 min_lat <- 52
@@ -49,12 +55,11 @@ p <- ggplot()+
 p
 
 # now find if this can translate into a simple xi / eta subsetting
-# roms has a curvilinear grid so expect issues
 
 xi_subset <- subset_rho %>% pull(xi_rho) %>% unique()
 eta_subset <- subset_rho %>% pull(eta_rho) %>% unique()
 
-# compare to originla
+# compare to original
 xi_all <- roms_rho %>% pull(xi_rho) %>% unique()
 eta_all <- roms_rho %>% pull(eta_rho) %>% unique()
 
@@ -75,11 +80,4 @@ rho_final %>%
   st_bbox() 
 
 # can reduce the size of the ROMS files to about 1/3
-# better than nothing but still inefficient
-
-# is this even doable? It will be 46K points * 365 * 30 for the hindcast...
-# that's half a billion rows for a data frame, for the smallest run (hindcast)
-# that x3 for any projection
-
-# even the coordinate-based subsetting is too much data
-# we are dealing with daily files...
+# better than nothing 

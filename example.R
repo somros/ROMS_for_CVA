@@ -1,11 +1,8 @@
+library(tidyverse)
 library(tidync)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
 library(ncdf4)
 library(lubridate)
 library(here)
-library(tidyverse)
 library(sf)
 library(rnaturalearth)
 
