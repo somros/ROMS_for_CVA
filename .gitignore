@@ -1,0 +1,7 @@
+.Rproj.user
+.Rhistory
+.Ruserdata
+*.Rdata
+
+data/combined_annual_data.RDS
+data/annual_files/*
