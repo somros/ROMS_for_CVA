@@ -50,20 +50,26 @@ read_roms_grid <- function(grid_file = here::here('data', 'NEP_grid_5a.nc')) {
 #' 
 #' @description
 #' Reads one annual NetCDF file containing surface and bottom layer data for
-#' multiple variables
+#' multiple variables, with optional filtering by year range and depth.
+#' Files outside the year range are skipped before reading.
 #' 
-#' @param ncfile Name of the NetCDF file to process
+#' @param ncfile Name of the NetCDF file to process (e.g., "annual_1990.nc")
 #' @param data_dir Directory containing the NetCDF files
 #' @param roms_grid ROMS grid data from read_roms_grid()
 #' @param variables Character vector of variable names to extract. 
 #'   Default is all 10 variables: temp, salt, PhS, PhL, MZS, MZL, Cop, NCa, Eup, Det
+#' @param min_year Minimum year to include in output (default: 1990)
+#' @param max_year Maximum year to include in output (default: 2020)
+#' @param maxdepth Maximum depth (h) to include in meters (default: 1000)
 #' 
-#' @return A tibble with columns: xi_rho, eta_rho, lon_rho, lat_rho, h, 
-#'   ocean_time, date, s_rho (layer), variable, value
+#' @return A tibble with columns: date, variable, layer, lon_rho, lat_rho, value
+#'   Returns NULL if file year is outside the specified range
 #' 
 #' @examples
 #' grid <- read_roms_grid()
 #' data <- process_annual_file("annual_1990.nc", "data/annual_files", grid)
+#' data <- process_annual_file("annual_2010.nc", "data/annual_files", grid, 
+#'                            min_year = 2005, max_year = 2015, maxdepth = 500)
 #' 
 #' @import tidync
 #' @import dplyr
@@ -73,7 +79,19 @@ read_roms_grid <- function(grid_file = here::here('data', 'NEP_grid_5a.nc')) {
 process_annual_file <- function(ncfile, data_dir, roms_grid, 
                                 variables = c("temp", "salt", "PhS", "PhL", 
                                               "MZS", "MZL", "Cop", "NCa", 
-                                              "Eup", "Det")) {
+                                              "Eup", "Det"),
+                                min_year = 1990,
+                                max_year = 2020,
+                                maxdepth = 1000) {
+  
+  # Extract year from filename (e.g., "annual_1990.nc" -> 1990)
+  file_year <- as.numeric(gsub("annual_(\\d{4})\\.nc", "\\1", ncfile))
+  
+  # Check if file year is within range - skip if not
+  if (file_year < min_year || file_year > max_year) {
+    print(paste("Skipping file:", ncfile, "(outside year range)"))
+    return(NULL)
+  }
   
   print(paste("Processing file:", ncfile))
   
@@ -99,8 +117,8 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
   nc_data_long <- nc_data_long %>%
     left_join(roms_grid, by = c("xi_rho", "eta_rho"))
   
-  # drop anything deeper than 1000 m 
-  nc_data_long <- nc_data_long %>% filter(h < 1000)
+  # Filter by depth using maxdepth parameter
+  nc_data_long <- nc_data_long %>% filter(h < maxdepth)
   
   # Convert ocean_time to dates
   nc_file <- nc_open(filepath)
@@ -131,7 +149,7 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
   
   # drop unneeded cols and transform to factor where possible
   nc_data_long <- nc_data_long %>%
-    select(date, variable, layer, lon_rho, lat_rho, value) %>%
+    select(date, variable, layer, lon_rho, lat_rho, value, xi_rho, eta_rho) %>%
     mutate(
       variable = factor(variable),
       layer = factor(layer)
@@ -172,7 +190,7 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
 #' @import dplyr
 #' @import sf
 #' @import rnaturalearth
-plot_spatial_map <- function(data, variable, year, month, coastline, title = NULL) {
+plot_spatial_map <- function(data, variable, year, month, coastline, title = NULL, psize = 0.5) {
   
   title <- paste0(variable, " in ", year, "-", month)
   
@@ -185,8 +203,8 @@ plot_spatial_map <- function(data, variable, year, month, coastline, title = NUL
   p <- dat %>%
     st_as_sf(coords = c("lon_rho", "lat_rho"), crs = 4326) %>%
     ggplot() +
-    geom_sf(aes(color = value), size = 0.5) +
-    geom_sf(data = coastline, color = "black", linewidth = 0.5) +
+    geom_sf(aes(color = value), size = psize, alpha = 0.8) +
+    geom_sf(data = coastline, color = "black", linewidth = 0.3) +
     facet_grid(~layer) +
     scale_color_viridis_c(option = "plasma") +
     labs(title = title,
@@ -198,7 +216,6 @@ plot_spatial_map <- function(data, variable, year, month, coastline, title = NUL
   
   return(p)
 }
-
 
 #' Create Time Series Plot with Ribbon
 #' 

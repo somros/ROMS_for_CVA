@@ -75,15 +75,28 @@ coast <- ne_coastline(scale = "medium", returnclass = "sf") %>%
 
 plot_spatial_map(all_data, 
                  variable = "temp", 
-                 year = 2010, 
-                 month = 6, 
+                 year = 2015, 
+                 month = 8, 
                  coastline = coast)
 
 # 4. Create time series plots
 plot_time_series(all_data, 
                  variable = "temp",
-                 start_year = 1995,
-                 end_year = 2000)
+                 start_year = 2010,
+                 end_year = 2020)
+
+
+# more plots
+temp_surface <- all_data %>%
+  filter(variable == "temp", layer == "surface") %>%
+  mutate(yr = year(date),
+         mo = month(date)) %>%
+  filter(mo == 8)
+
+temp_surface %>%
+  ggplot(aes(x = yr, y = value, color = lat_rho))+
+  geom_line()
+  
 
 # # make gif for talk
 # library(magick)
