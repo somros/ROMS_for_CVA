@@ -58,8 +58,8 @@ read_roms_grid <- function(grid_file = here::here('data', 'NEP_grid_5a.nc')) {
 #' @param roms_grid ROMS grid data from read_roms_grid()
 #' @param variables Character vector of variable names to extract. 
 #'   Default is all 10 variables: temp, salt, PhS, PhL, MZS, MZL, Cop, NCa, Eup, Det
-#' @param min_year Minimum year to include in output (default: 1990)
-#' @param max_year Maximum year to include in output (default: 2020)
+#' @param min_year Minimum year to include in output (required)
+#' @param max_year Maximum year to include in output (required)
 #' @param maxdepth Maximum depth (h) to include in meters (default: 1000)
 #' 
 #' @return A tibble with columns: date, variable, layer, lon_rho, lat_rho, value
@@ -67,7 +67,8 @@ read_roms_grid <- function(grid_file = here::here('data', 'NEP_grid_5a.nc')) {
 #' 
 #' @examples
 #' grid <- read_roms_grid()
-#' data <- process_annual_file("annual_1990.nc", "data/annual_files", grid)
+#' data <- process_annual_file("annual_1990.nc", "data/annual_files", grid,
+#'                            min_year = 1990, max_year = 2020)
 #' data <- process_annual_file("annual_2010.nc", "data/annual_files", grid, 
 #'                            min_year = 2005, max_year = 2015, maxdepth = 500)
 #' 
@@ -80,9 +81,15 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
                                 variables = c("temp", "salt", "PhS", "PhL", 
                                               "MZS", "MZL", "Cop", "NCa", 
                                               "Eup", "Det"),
-                                min_year = 1990,
-                                max_year = 2020,
-                                maxdepth = 1000) {
+                                min_year = NA,
+                                max_year = NA,
+                                maxdepth = 1000,
+                                mask = goa_mask) {
+  
+  # Check if min_year and max_year are provided
+  if (is.na(min_year) || is.na(max_year)) {
+    stop("Both min_year and max_year must be provided.")
+  }
   
   # Extract year from filename (e.g., "annual_1990.nc" -> 1990)
   file_year <- as.numeric(gsub("annual_(\\d{4})\\.nc", "\\1", ncfile))
@@ -120,6 +127,13 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
   # Filter by depth using maxdepth parameter
   nc_data_long <- nc_data_long %>% filter(h < maxdepth)
   
+  # eliminate xi and eta points outside the ROMS mask
+  # this slows down the function but it will produce much smaller masks
+  nc_data_long <- nc_data_long %>%
+    mutate(idx_drop = paste(xi_rho, eta_rho, sep = "_")) %>%
+    filter(!idx_drop %in% mask) %>%
+    select(-idx_drop)
+  
   # Convert ocean_time to dates
   nc_file <- nc_open(filepath)
   time_data <- ncvar_get(nc_file, "ocean_time")
@@ -149,7 +163,7 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
   
   # drop unneeded cols and transform to factor where possible
   nc_data_long <- nc_data_long %>%
-    select(date, variable, layer, lon_rho, lat_rho, value, xi_rho, eta_rho) %>%
+    select(date, variable, layer, lon_rho, lat_rho, value) %>%
     mutate(
       variable = factor(variable),
       layer = factor(layer)
