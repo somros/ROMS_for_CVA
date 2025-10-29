@@ -32,15 +32,16 @@ read_roms_grid <- function(grid_file = here::here('data', 'NEP_grid_5a.nc')) {
   roms_rho <- roms %>% 
     activate(latlon_rhogrd) %>% 
     hyper_tibble() %>%
-    dplyr::select(lon_rho, lat_rho, xi_rho, eta_rho, h) %>% 
-    mutate(lon_rho = lon_rho - 360) # Convert to -180 to 180
+    dplyr::select(lon_rho, lat_rho, xi_rho, eta_rho, h)# %>% 
+    #mutate(lon_rho = lon_rho - 360) # Convert to -180 to 180
   
   # Subset to match the pre-processed data indices
   # Original indices: xi_rho 67-226, eta_rho 237-450
   roms_rho <- roms_rho %>%
     filter(between(xi_rho, 67, 226), between(eta_rho, 237, 450)) %>%
-    mutate(xi_rho = xi_rho - 66,  # Renumber starting from 1
-           eta_rho = eta_rho - 236)
+    mutate(xi_rho_new = xi_rho - 66,  # Renumber starting from 1
+           eta_rho_new = eta_rho - 236) %>%
+    dplyr::select(-xi_rho, -eta_rho)
   
   return(roms_rho)
 }
@@ -87,14 +88,6 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
                                 mask = goa_mask) {
   
   
-  ncfile = file
-  data_dir = "data/annual_files/hindcast"
-  roms_grid = grid
-  variables = "temp"
-  min_year = 2015
-  max_year = 2015
-  maxdepth = 9999
-  
   # Check if min_year and max_year are provided
   if (is.na(min_year) || is.na(max_year)) {
     stop("Both min_year and max_year must be provided.")
@@ -129,9 +122,12 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
                  values_to = "value") %>%
     drop_na(value)  # Remove NA values (land cells)
   
+  # rename xi and eta columns to reflect the fact that these are no longer the original indices but they have been reset to 1
+  nc_data_long <- nc_data_long %>% rename(xi_rho_new = xi_rho, eta_rho_new = eta_rho)
+  
   # Join with grid to get coordinates
   nc_data_long <- nc_data_long %>%
-    left_join(roms_grid, by = c("xi_rho", "eta_rho"))
+    left_join(roms_grid, by = c("xi_rho_new", "eta_rho_new"))
   
   # Filter by depth using maxdepth parameter
   nc_data_long <- nc_data_long %>% filter(h < maxdepth)
@@ -139,9 +135,9 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
   # eliminate xi and eta points outside the ROMS mask
   # this slows down the function but it will produce much smaller masks
   nc_data_long <- nc_data_long %>%
-    mutate(idx_drop = paste(xi_rho, eta_rho, sep = "_")) %>%
+    mutate(idx_drop = paste(xi_rho_new, eta_rho_new, sep = "_")) %>%
     filter(!idx_drop %in% mask) %>%
-    select(-idx_drop)
+    dplyr::select(-idx_drop)
   
   # Convert ocean_time to dates
   nc_file <- nc_open(filepath)
@@ -172,7 +168,7 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
   
   # drop unneeded cols and transform to factor where possible
   nc_data_long <- nc_data_long %>%
-    select(date, variable, layer, lon_rho, lat_rho, value) %>%
+    dplyr::select(date, variable, layer, lon_rho, lat_rho, value) %>%
     mutate(
       variable = factor(variable),
       layer = factor(layer)

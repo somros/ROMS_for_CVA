@@ -1,23 +1,18 @@
 # script to make a figure for PICES
 # load packages
 if (!require("pacman", quietly = TRUE)) install.packages("pacman")
-pacman::p_load(tidyverse, tidync, ncdf4, lubridate, here, sf, 
-               rnaturalearth, arrow)
-
-# Special handling for rnaturalearthhires
+pacman::p_load(tidyverse, tidync, ncdf4, lubridate, here, sf, rnaturalearth, arrow)
 pacman::p_load_gh("ropensci/rnaturalearthhires")
 
 # Source functions
 source("functions.R")
 
-# 1. Read ROMS grid
+# Read ROMS grid
 grid <- read_roms_grid()
-
 goa_mask <- scan("idx_to_drop.txt", "character", sep = " ")
 
-# 2. Read all annual files and bind them together
+# Read all annual files and bind them together
 nc_files <- list.files("data/annual_files/hindcast/", pattern = "annual_.*\\.nc$", full.names = FALSE)
-
 message(paste("Found", length(nc_files), "files to process"))
 
 # Initialize empty list to store results
@@ -57,17 +52,17 @@ all_data <- bind_rows(all_data_list)
 all_data <- all_data %>%
   arrange(date, variable, layer)
 
-# 4. Create spatial maps
+# Create spatial maps
 coast <- ne_coastline(scale = "large", returnclass = "sf") %>%
-  st_crop(xmin = -170, xmax = -130, ymin = 50, ymax = 62)
+  st_crop(xmin = -170, xmax = -130, ymin = 50, ymax = 62) %>%
+  st_shift_longitude()
 
 p <- plot_spatial_map(all_data %>% filter(layer == "surface"), 
                  variable = "temp", 
                  year = 2015, 
                  month = 8, 
                  coastline = coast,
-                 psize = 0.8) +
-  coord_sf(xlim = c(-170,-133), ylim = c(50, 62))
+                 psize = 0.8)
 p
 
 ggsave("sst.png", p, dpi = 300, width = 8, height = 8)

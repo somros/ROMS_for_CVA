@@ -10,6 +10,8 @@ library(arrow)
 rm(list = ls())
 gc()
 
+# TODO: wrap this as a function where the argument is the run and years
+
 # Source your functions
 source("functions.R")
 
