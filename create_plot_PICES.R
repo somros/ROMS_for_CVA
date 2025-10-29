@@ -1,19 +1,19 @@
 # script to make a figure for PICES
-library(tidyverse)
-library(tidync)
-library(ncdf4)
-library(lubridate)
-library(here)
-library(sf)
-library(rnaturalearth)
-library(rnaturalearthhires)
-library(stars)
+# load packages
+if (!require("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(tidyverse, tidync, ncdf4, lubridate, here, sf, 
+               rnaturalearth, arrow)
 
-# Source your functions
+# Special handling for rnaturalearthhires
+pacman::p_load_gh("ropensci/rnaturalearthhires")
+
+# Source functions
 source("functions.R")
 
 # 1. Read ROMS grid
 grid <- read_roms_grid()
+
+goa_mask <- scan("idx_to_drop.txt", "character", sep = " ")
 
 # 2. Read all annual files and bind them together
 nc_files <- list.files("data/annual_files/hindcast/", pattern = "annual_.*\\.nc$", full.names = FALSE)

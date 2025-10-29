@@ -40,4 +40,3 @@ plot_time_series(all_data,
                  variable = "temp",
                  start_year = 2010,
                  end_year = 2020)
-

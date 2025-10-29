@@ -1,6 +1,7 @@
 # identify which ROMS cells are in the EBS and are therefore to be dropped at the stage of reading the nc files
 # doing this now will allow us to ditch a good amount of cells
 # work on the grid object, match it with the NMFS areas, write out the voctor of xi and eta to ditch
+# do not need to run this more than once
 
 library(tidyverse)
 library(tidync)

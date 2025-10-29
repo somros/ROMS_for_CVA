@@ -86,6 +86,15 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
                                 maxdepth = 1000,
                                 mask = goa_mask) {
   
+  
+  ncfile = file
+  data_dir = "data/annual_files/hindcast"
+  roms_grid = grid
+  variables = "temp"
+  min_year = 2015
+  max_year = 2015
+  maxdepth = 9999
+  
   # Check if min_year and max_year are provided
   if (is.na(min_year) || is.na(max_year)) {
     stop("Both min_year and max_year must be provided.")
