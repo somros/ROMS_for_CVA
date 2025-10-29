@@ -177,6 +177,213 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
   return(nc_data_long)
 }
 
+#' Create Parquet File from ROMS Annual Data
+#'
+#' This function processes ROMS (Regional Ocean Modeling System) annual data files
+#' for specified runs and years, combining them into a single parquet file.
+#'
+#' @param run Character string specifying the run type. Must be one of:
+#'   \itemize{
+#'     \item "hindcast" - Historical hindcast run (default years: 1990-2020)
+#'     \item "historical" - Historical run (default years: 1980-2014)
+#'     \item "ssp585" - SSP5-8.5 scenario (default years: 2015-2099)
+#'     \item "ssp245" - SSP2-4.5 scenario (default years: 2015-2099)
+#'     \item "ssp126" - SSP1-2.6 scenario (default years: 2015-2099)
+#'   }
+#' @param min_year Integer. Minimum year to process. If NULL (default), uses
+#'   run-specific defaults: hindcast (1990), historical (1980), 
+#'   ssp585/ssp245/ssp126 (2015).
+#' @param max_year Integer. Maximum year to process. If NULL (default), uses
+#'   run-specific defaults: hindcast (2020), historical (2014),
+#'   ssp585/ssp245/ssp126 (2099).
+#' @param variables Character vector of variables to process. Default includes
+#'   all available variables: "temp" (temperature), "salt" (salinity), 
+#'   "PhS" (small phytoplankton), "PhL" (large phytoplankton), 
+#'   "MZS" (small microzooplankton), "MZL" (large microzooplankton),
+#'   "Cop" (copepods), "NCa" (neocalanus), "Eup" (euphausiids), 
+#'   "Det" (detritus).
+#' @param maxdepth Numeric. Maximum depth to process. Default is 1000.
+#' @param mask Character vector. Mask for which ROMS points to drop. Default is
+#'   "goa_mask", which will be read from \code{idx_to_drop.txt}.
+#'
+#' @return Invisibly returns the path to the saved parquet file.
+#' 
+#' @details
+#' The function reads NetCDF files from the directory structure 
+#' \code{data/annual_files/{run}/}, processes them using \code{process_annual_file()},
+#' and saves the combined output to \code{data/processed/}. If an output file 
+#' already exists, a new file will be created with a numbered suffix (e.g., 
+#' "hindcast_annual_data (1).parquet").
+#' 
+#' The function requires:
+#' \itemize{
+#'   \item A \code{functions.R} file with the \code{process_annual_file()} and 
+#'         \code{read_roms_grid()} functions
+#'   \item An \code{idx_to_drop.txt} file containing the ROMS grid mask
+#'   \item NetCDF files in the appropriate \code{data/annual_files/{run}/} directory
+#' }
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Process hindcast with all defaults
+#' create_parquet_file(run = "hindcast")
+#' 
+#' # Process historical with custom years
+#' create_parquet_file(run = "historical", min_year = 1985, max_year = 2010)
+#' 
+#' # Process SSP2-4.5 scenario with subset of variables
+#' create_parquet_file(run = "ssp245", variables = c("temp", "salt"))
+#' 
+#' # Process with custom depth limit
+#' create_parquet_file(run = "hindcast", maxdepth = 500)
+#' 
+#' # Process with all custom parameters
+#' create_parquet_file(
+#'   run = "ssp585",
+#'   min_year = 2050,
+#'   max_year = 2080,
+#'   variables = c("temp", "PhS", "PhL", "Cop"),
+#'   maxdepth = 750
+#' )
+#' 
+#' # Use a custom mask
+#' custom_mask <- c("point1", "point2", "point3")
+#' create_parquet_file(run = "hindcast", mask = custom_mask)
+#' }
+create_parquet_file <- function(run,
+                                min_year = NULL,
+                                max_year = NULL,
+                                variables = c("temp", "salt", "PhS", "PhL", 
+                                              "MZS", "MZL", "Cop", "NCa", 
+                                              "Eup", "Det"),
+                                maxdepth = 1000,
+                                mask = "goa_mask") {
+  
+  # Validate run argument
+  valid_runs <- c("hindcast", "historical", "ssp585", "ssp245", "ssp126")
+  if (!run %in% valid_runs) {
+    stop("Invalid 'run' argument. Must be one of: ", 
+         paste(valid_runs, collapse = ", "))
+  }
+  
+  # Set default years based on run if not provided
+  if (is.null(min_year)) {
+    min_year <- switch(run,
+                       hindcast = 1990,
+                       historical = 1980,
+                       ssp585 = 2015,
+                       ssp245 = 2015,
+                       ssp126 = 2015)
+  }
+  
+  if (is.null(max_year)) {
+    max_year <- switch(run,
+                       hindcast = 2020,
+                       historical = 2014,
+                       ssp585 = 2099,
+                       ssp245 = 2099,
+                       ssp126 = 2099)
+  }
+  
+  # Generate base output filename
+  base_outfile <- paste0("data/processed/", run, "_annual_data.parquet")
+  
+  # Handle file name collision
+  outfile <- base_outfile
+  counter <- 1
+  while (file.exists(outfile)) {
+    outfile <- paste0("data/processed/", run, "_annual_data (", counter, ").parquet")
+    counter <- counter + 1
+  }
+  
+  if (outfile != base_outfile) {
+    message(paste("Output file already exists. Writing to:", basename(outfile)))
+  }
+  
+  # Source functions
+  source("functions.R")
+  
+  # Read ROMS grid
+  grid <- read_roms_grid()
+  
+  # Read in mask for which ROMS point to drop
+  if (mask == "goa_mask") {
+    goa_mask <- scan("idx_to_drop.txt", "character", sep = " ")
+  } else {
+    goa_mask <- mask
+  }
+  
+  # Read all annual files and bind them together
+  data_dir <- paste0("data/annual_files/", run)
+  nc_files <- list.files(data_dir, 
+                         pattern = "annual_.*\\.nc$", 
+                         full.names = FALSE)
+  
+  if (length(nc_files) == 0) {
+    stop("No NetCDF files found in ", data_dir)
+  }
+  
+  message(paste("Found", length(nc_files), "files to process"))
+  message(paste("Processing run:", run))
+  message(paste("Year range:", min_year, "to", max_year))
+  message(paste("Variables:", paste(variables, collapse = ", ")))
+  
+  # Initialize empty list to store results
+  all_data_list <- list()
+  
+  # Loop through files
+  for (i in seq_along(nc_files)) {
+    file <- nc_files[i]
+    
+    # Process file
+    data <- process_annual_file(
+      ncfile = file,
+      data_dir = data_dir,
+      roms_grid = grid,
+      min_year = min_year,
+      max_year = max_year,
+      variables = variables,
+      maxdepth = maxdepth,
+      mask = goa_mask
+    )
+    
+    # Add to list
+    all_data_list[[i]] <- data
+    
+    # Progress message
+    message(paste("Completed", i, "of", length(nc_files)))
+    
+    # Optional: garbage collection every few files to free up memory
+    if (i %% 5 == 0) {
+      gc()
+    }
+  }
+  
+  # Bind all data together
+  all_data <- bind_rows(all_data_list)
+  rm(all_data_list)
+  gc()
+  
+  # Sort by date
+  all_data <- all_data %>%
+    arrange(date, variable, layer) %>%
+    mutate(run = factor(run))
+  
+  # Summary
+  message(paste("Total rows:", nrow(all_data)))
+  message(paste("Date range:", min(all_data$date), "to", max(all_data$date)))
+  message(paste("Variables:", paste(unique(all_data$variable), collapse = ", ")))
+  
+  # Save the combined dataset
+  write_parquet(all_data, outfile)
+  message(paste("Data saved to:", outfile))
+  
+  # Return the output file path invisibly
+  invisible(outfile)
+}
+
 
 #' Create Spatial Maps for Surface and Bottom Layers
 #' 
