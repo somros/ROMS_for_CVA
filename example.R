@@ -16,7 +16,7 @@
 #   depths ≤1000m to minimize file size
 # - If you need broader spatial coverage or deeper depths, you must reprocess
 #   the original netCDF files using the process_annual_file() function
-# - Projection runs (ssp126, ssp585) are NOT bias-corrected yet
+# - Projection runs are NOT bias-corrected yet
 # - This script assumes you have already processed raw ROMS outputs into
 #   Parquet format using the main processing workflow
 # ============================================================================
@@ -57,9 +57,9 @@ all_data <- open_dataset(this_file)  # Uses Apache Arrow for efficient access
 # You don't have to apply filters but it will occupy less RAM if you do
 # If you want to read many data stream at once, you should definitely filter
 data_subset <- all_data %>%
-  filter(layer == "surface") %>%  # Select only surface layer (other options: "bottom", "30m", etc.)
-  filter(variable == "temp") %>%  # Choose variable of interest (temp, oxygen, salinity, etc.)
-  filter(date > as.Date("2030-01-01")) %>%  # Restrict to dates after Jan 1, 2030
+  filter(layer == "surface") %>%  # Select only surface layer (other options: "bottom")
+  filter(variable == "temp") %>%  # Choose variable of interest ("temp", "salt", "PhS", "PhL", etc.)
+  filter(date > as.Date("2030-01-01")) %>%  # Restrict to dates if you want to
   collect()  # NOW load the filtered data into RAM
 
 # ============================================================================

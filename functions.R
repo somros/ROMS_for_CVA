@@ -6,7 +6,7 @@
 #' 
 #' @param grid_file Path to the ROMS grid NetCDF file (default: 'data/NEP_grid_5a.nc')
 #' 
-#' @return A tibble with columns: xi_rho, eta_rho, lon_rho, lat_rho, h (depth)
+#' @return A tibble with columns: xi_rho_new, eta_rho_new, lon_rho, lat_rho, h (depth)
 #' 
 #' @examples
 #' roms_grid <- read_roms_grid()
@@ -68,10 +68,10 @@ read_roms_grid <- function(grid_file = here::here('data', 'NEP_grid_5a.nc')) {
 #' 
 #' @examples
 #' grid <- read_roms_grid()
-#' data <- process_annual_file("annual_1990.nc", "data/annual_files", grid,
-#'                            min_year = 1990, max_year = 2020)
+#' data <- process_annual_file("annual_1990.nc", "data/annual_files", grid, # though usually ran over batches of files
+#'                            min_year = 1990, max_year = 1990)
 #' data <- process_annual_file("annual_2010.nc", "data/annual_files", grid, 
-#'                            min_year = 2005, max_year = 2015, maxdepth = 500)
+#'                            min_year = 2010, max_year = 2010, maxdepth = 500)
 #' 
 #' @import tidync
 #' @import dplyr
@@ -179,7 +179,7 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
 
 #' Create Parquet File from ROMS Annual Data
 #'
-#' This function processes ROMS (Regional Ocean Modeling System) annual data files
+#' This function processes ROMS annual data files with monthly time steps
 #' for specified runs and years, combining them into a single parquet file.
 #'
 #' @param run Character string specifying the run type. Must be one of:
@@ -233,8 +233,8 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
 #' # Process historical with custom years
 #' create_parquet_file(run = "historical", min_year = 1985, max_year = 2010)
 #' 
-#' # Process SSP2-4.5 scenario with subset of variables
-#' create_parquet_file(run = "ssp245", variables = c("temp", "salt"))
+#' # Process SSP5-8.5 scenario with subset of variables
+#' create_parquet_file(run = "ssp585", variables = c("temp", "salt"))
 #' 
 #' # Process with custom depth limit
 #' create_parquet_file(run = "hindcast", maxdepth = 500)
@@ -248,9 +248,6 @@ process_annual_file <- function(ncfile, data_dir, roms_grid,
 #'   maxdepth = 750
 #' )
 #' 
-#' # Use a custom mask
-#' custom_mask <- c("point1", "point2", "point3")
-#' create_parquet_file(run = "hindcast", mask = custom_mask)
 #' }
 create_parquet_file <- function(run,
                                 min_year = NULL,
@@ -404,7 +401,8 @@ create_parquet_file <- function(run,
 #' # Load coastline data once
 #' library(rnaturalearth)
 #' coast <- ne_coastline(scale = "medium", returnclass = "sf") %>%
-#'   st_crop(xmin = -170, xmax = -130, ymin = 50, ymax = 62)
+#'   st_crop(xmin = -170, xmax = -130, ymin = 50, ymax = 62) %>%
+#'   st_shift_longitude()
 #' 
 #' # Create map for June 2010
 #' plot_spatial_map(all_data, "temp", 2010, 6, coast)

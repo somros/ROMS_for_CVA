@@ -47,7 +47,7 @@ goa_mask <- scan("idx_to_drop.txt", "character", sep = " ")
 # ============================================================================
 # SECTION 2: Process Annual NetCDF Files
 # ============================================================================
-# The data are stored as multiple annual netCDF files with monthyl time steps. This section
+# The data are stored as multiple annual netCDF files with monthly time steps. This section
 # reads all files, extracts the relevant data, and combines them into a
 # single dataset. Processing from raw netCDF allows custom filtering not
 # available in the pre-processed Parquet files.
@@ -66,7 +66,6 @@ nc_files <- list.files(paste0("data/annual_files/", this_run),
 message(paste("Found", length(nc_files), "files to process"))
 
 # Initialize an empty list to store data from each file
-# Using a list is more memory-efficient than repeatedly binding dataframes
 all_data_list <- list()
 
 # Loop through each netCDF file and process it
@@ -81,7 +80,7 @@ for (i in seq_along(nc_files)) {
     roms_grid = grid,  # Grid structure for coordinate mapping
     variables = "temp",  # Extract only temperature (faster than all variables)
     min_year = 2039,  # Start of time period to extract
-    max_year = 2039,  # End of time period (2015 only for this figure)
+    max_year = 2039,  # End of time period
     maxdepth = 9999  # Include all depths (no depth filtering)
   )
   
@@ -99,11 +98,9 @@ for (i in seq_along(nc_files)) {
 }
 
 # Combine all processed data into a single dataframe
-# bind_rows efficiently stacks all list elements
 all_data <- bind_rows(all_data_list)
 
 # Sort the data for easier subsetting and analysis
-# Ensures consistent ordering: first by date, then variable, then depth layer
 all_data <- all_data %>%
   arrange(date, variable, layer)
 
@@ -126,17 +123,14 @@ p <- plot_spatial_map(
   year = 2039,  # Year to visualize
   month = 8,  # August (summer conditions)
   coastline = coast,  # Add coastline overlay
-  psize = 0.75  # Point size for grid cells (smaller = more detailed)
+  psize = 0.75  # Point size for grid cells - play with this depending on the size you want the image
 )
-
-# Display the plot in RStudio viewer
 p
 
 # Export the figure as a high-resolution PNG
-# Settings optimized for publications and presentations
 ggsave("sst.png",  # Output filename
        p,  # Plot object to save
-       dpi = 600,  # Resolution (300 DPI is publication standard)
+       dpi = 600,  # Resolution
        width = 8,  # Width in inches
        height = 8)  # Height in inches (square format)
 

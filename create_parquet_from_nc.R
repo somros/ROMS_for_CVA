@@ -15,10 +15,10 @@ source("functions.R")
 # ssp245 (2015-2099)
 # ssp126 (2015-2099)
 
-# DO not need to rerun these, the data already exists
-create_parquet_file(run = "hindcast")
-create_parquet_file(run = "historical")
-create_parquet_file(run = "ssp585")
+# Do not need to rerun these, the data already exists
+# create_parquet_file(run = "hindcast")
+# create_parquet_file(run = "historical")
+# create_parquet_file(run = "ssp585")
 
 
 # # example using custom filters

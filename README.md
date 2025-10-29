@@ -2,9 +2,13 @@
 
 This repository contains code for processing and visualizing NEP 10K ROMS ocean model output data for the Gulf of Alaska region. The workflow consists of server-side preprocessing to extract and subset large NetCDF files, followed by local R-based analysis using either raw NetCDF files or preprocessed Parquet files.
 
-NOTE: Most GOACLIM models use the approach outlined [here](https://github.com/GOA-CLIM/ROMS_to_Index/tree/main), which produces area- and depth-aggregated indices at the level of NMFS areas or broader GOA regions. You should only be using this repository if you need spatially-explicit ROMS indices.
+**NOTE**: Most GOACLIM models use the approach outlined [here](https://github.com/GOA-CLIM/ROMS_to_Index/tree/main), which produces area- and depth-aggregated indices at the level of NMFS areas or broader GOA regions. You should only be using this repository if you need spatially-explicit ROMS indices.
 
 This code extracts only surface and bottom layers from ROMS NetCDF files. Depth-integrated indices are not currently produced.
+
+This repository uses Git LFS for large data files. Install it before cloning:
+- Download from https://git-lfs.github.com/
+- Run `git lfs install`
 
 ## Workflow Overview
 
