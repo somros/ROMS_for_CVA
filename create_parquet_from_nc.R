@@ -18,6 +18,8 @@ source("functions.R")
 # Do not need to rerun these, the data already exists
 # create_parquet_file(run = "hindcast")
 # create_parquet_file(run = "historical")
+# create_parquet_file(run = "ssp126")
+# create_parquet_file(run = "ssp245")
 # create_parquet_file(run = "ssp585")
 
 

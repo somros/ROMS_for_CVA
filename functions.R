@@ -429,7 +429,7 @@ plot_spatial_map <- function(data, variable, year, month, coastline, title = NUL
     ggplot() +
     geom_sf(aes(color = value), size = psize, alpha = 0.8) +
     geom_sf(data = coastline, color = "black", linewidth = 0.3) +
-    facet_grid(~layer) +
+    facet_grid(run~layer) +
     scale_color_viridis_c(option = "plasma") +
     labs(title = title,
          x = "Longitude",
@@ -490,7 +490,7 @@ plot_time_series <- function(data, variable, start_year = NULL, end_year = NULL,
   
   # Calculate spatial statistics with 5th and 95th percentiles
   plot_data <- plot_data %>%
-    group_by(date, layer) %>%
+    group_by(date, layer, run) %>%
     summarise(mean_value = mean(value, na.rm = TRUE),
               lower = quantile(value, 0.05, na.rm = TRUE),
               upper = quantile(value, 0.95, na.rm = TRUE),
@@ -512,16 +512,14 @@ plot_time_series <- function(data, variable, start_year = NULL, end_year = NULL,
   }
   
   # Create plot with facets
-  p <- ggplot(plot_data, aes(x = date, y = mean_value)) +
-    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "steelblue") +
-    geom_line(color = "steelblue", linewidth = 0.8) +
-    facet_wrap(~layer, ncol = 1) +
+  p <- ggplot(plot_data, aes(x = date, y = mean_value, color = run, fill = run)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3) +
+    geom_line(linewidth = 0.8) +
+    facet_grid(~layer) +
     labs(title = title,
          x = "Date",
          y = paste("Mean", variable)) +
-    theme_bw() +
-    theme(strip.background = element_rect(fill = "white"),
-          strip.text = element_text(face = "bold"))
+    theme_bw()
   
   return(p)
 }

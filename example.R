@@ -78,7 +78,7 @@ coast <- ne_coastline(scale = "medium", returnclass = "sf") %>%
 # This uses a custom plotting function defined in functions.R
 plot_spatial_map(data = data_subset,  # The filtered dataset
                  variable = "temp",  # Variable to plot (must match filter above)
-                 year = 2039,  # Year to visualize
+                 year = 2089,  # Year to visualize
                  month = 8,  # Month to visualize (1-12)
                  coastline = coast,  # Coastline overlay for context
                  psize = 1)  # Point size for grid cells
@@ -92,9 +92,53 @@ plot_spatial_map(data = data_subset,  # The filtered dataset
 
 # Generate a time series showing trends from 2025 to 2090
 # This uses a custom plotting function defined in functions.R
-plot_time_series(data_subset,  # The filtered dataset
+plot_time_series(data = data_subset,  # The filtered dataset
                  variable = "temp",  # Variable to plot (must match filter above)
                  start_year = 2025,  # Beginning of time series
+                 end_year = 2090)  # End of time series
+
+# ============================================================================
+# SECTION 4: Compare two projections
+# ============================================================================
+# Specify which model run to analyze
+# Options  include: "hindcast", "historical", "ssp126", "ssp245", "ssp585"
+# WARNING: Projection runs (ssp*) are not yet bias-corrected
+run1 <- "ssp126"
+run2 <- "ssp585"
+file1 <- paste0("data/processed/", run1, "_annual_data.parquet")
+file2 <- paste0("data/processed/", run2, "_annual_data.parquet")
+
+# Open the dataset WITHOUT loading it into memory
+all_data1 <- open_dataset(file1)
+all_data2 <- open_dataset(file2)
+
+# Filter to specific data subset before loading
+data_subset1 <- all_data1 %>%
+  filter(layer == "surface") %>%
+  filter(variable == "temp") %>%
+  filter(date > as.Date("2050-01-01")) %>%
+  collect() 
+
+data_subset2 <- all_data2 %>%
+  filter(layer == "surface") %>%
+  filter(variable == "temp") %>%
+  filter(date > as.Date("2050-01-01")) %>%
+  collect() 
+
+# bind
+data_compare <- rbind(data_subset1, data_subset2)
+
+# plot
+plot_spatial_map(data = data_compare,  # The filtered dataset
+                 variable = "temp",  # Variable to plot (must match filter above)
+                 year = 2085,  # Year to visualize
+                 month = 8,  # Month to visualize (1-12)
+                 coastline = coast,  # Coastline overlay for context
+                 psize = 1)  # Point size for grid cells
+
+plot_time_series(data = data_compare,  # The filtered dataset
+                 variable = "temp",  # Variable to plot (must match filter above)
+                 start_year = 2080,  # Beginning of time series
                  end_year = 2090)  # End of time series
 
 # ============================================================================

@@ -26,7 +26,7 @@ while read file_path; do
     cdo -f nc4 -z zip_9 selindexbox,67,226,237,450 -sellevidx,1,42 -selname,temp,salt,Det,Eup,NCa,MZL,PhL,Cop,MZS,PhS "$file_path" "$output_file"
 
     echo "Processed $filename"
-done < ssp585_files.txt
+done < ssp126_files.txt
 
 echo "Step 1 complete: Surface and bottom layer extraction finished"
 echo ""
@@ -63,13 +63,13 @@ for YEAR in $(seq $START_YEAR $END_YEAR); do
     # Files follow pattern: surf_bottom_roms_nep_revised_hind_moave_YYYY_MM.nc
     FOUND_FILES=0
     for MONTH in $(seq -w 1 12); do
-        MONTHLY_FILE="$INPUT_DIR/b_s_roms_nep_wb_ssp585_moave_${YEAR}_${MONTH}.nc"
+        MONTHLY_FILE="$INPUT_DIR/b_s_roms_nep_wb_ssp126_moave_${YEAR}_${MONTH}.nc"
         if [ -f "$MONTHLY_FILE" ]; then
             cp "$MONTHLY_FILE" "$TEMP_DIR/"
             FOUND_FILES=$((FOUND_FILES + 1))
             echo "  Found: $(basename $MONTHLY_FILE)"
         else
-            echo "  Missing: b_s_roms_nep_wb_ssp585_moave_${YEAR}_${MONTH}.nc"
+            echo "  Missing: b_s_roms_nep_wb_ssp126_moave_${YEAR}_${MONTH}.nc"
         fi
     done
     
@@ -84,7 +84,7 @@ for YEAR in $(seq $START_YEAR $END_YEAR); do
     
     # Merge all monthly files for this year
     echo "  Merging monthly files for $YEAR..."
-    cdo mergetime $TEMP_DIR/b_s_roms_nep_wb_ssp585_moave_${YEAR}_*.nc $OUTPUT_DIR/annual_${YEAR}.nc
+    cdo mergetime $TEMP_DIR/b_s_roms_nep_wb_ssp126_moave_${YEAR}_*.nc $OUTPUT_DIR/annual_${YEAR}.nc
     
     # Check how many timesteps we got
     NUM_TIMESTEPS=$(cdo ntime $OUTPUT_DIR/annual_${YEAR}.nc)
